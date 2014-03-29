@@ -32,7 +32,8 @@ Installation
 - Add arguments (optional): -file "C:\path\to\script\directory\scombag.ps1"  
 11. Click OK to save the new scheduled task.  
 
-*NOTE* For those with multiple SCOM 2012 servers, the script will ONLY execute on the server with the RMS Emulator role to prevent it executing on multiple SCOM servers simultaneously.
+For those with multiple SCOM 2012 servers, the script will ONLY execute on the server with the RMS Emulator role to prevent it executing on multiple SCOM servers simultaneously.
+
 =========================================
 Upgrading
 =========================================
@@ -44,24 +45,24 @@ Configuration
 Main config file (scombag_config.ini) option explanation:
 
 [main]  
-scom_rule_auto_close - <0/1> - Allow this script to close rules in SCOM after it has forwarded them to Nagios.  
-strip_fqdn - <0/1> - If enabled the script will strip the FQDN from the hostname before forwarding to Nagios.  
-map_file - <mapfile_name.json> - Name of the JSON map file to load for instructions about translating information.   
-hostname_case - <lower/upper/first-upper/none> - Convert the case of the hostname (and FQDN) to the selected case. First-upper will change the first letter to upper case. 
-trace_mode_enabled - <0/1> - Enable or disable tracing mode (see execution usage option enable_tracing).  
+scom_rule_auto_close - 0/1 - Allow this script to close rules in SCOM after it has forwarded them to Nagios.  
+strip_fqdn - 0/1 - If enabled the script will strip the FQDN from the hostname before forwarding to Nagios.  
+map_file - mapfile_name.json - Name of the JSON map file to load for instructions about translating information.   
+hostname_case - lower/upper/first-upper/none - Convert the case of the hostname (and FQDN) to the selected case. First-upper will change the first letter to upper case. 
+trace_mode_enabled - 0/1 - Enable or disable tracing mode (see execution usage option enable_tracing).  
 
-[track]
-trk_file - <trackingfile_name.json> - Name of the JSON tracking file to use for keeping track of what information has been forwarded to Nagios.  
-trk_archive_days_ttl - <#> - A number specifying how many days a closed entry in the tracking file will remain (for debugging purposes).  
-trk_alert_max_ttl - <#> - A number specifying how many days an alert can remain open before it is automatically closed to prevent unforseen circumstances keeping an alert open forever.  
-trk_resend_alert - <#> - If an alert hasn't been closed in SCOM within the number of days specified for this option a new alert will be forwarded to Nagios.  
+[track]  
+trk_file - trackingfile_name.json - Name of the JSON tracking file to use for keeping track of what information has been forwarded to Nagios.  
+trk_archive_days_ttl - # - A number specifying how many days a closed entry in the tracking file will remain (for debugging purposes).  
+trk_alert_max_ttl - # - A number specifying how many days an alert can remain open before it is automatically closed to prevent unforseen circumstances keeping an alert open forever.  
+trk_resend_alert - # - If an alert hasn't been closed in SCOM within the number of days specified for this option a new alert will be forwarded to Nagios.  
 
-[logging]
-log_enable - <0/1> - Enable or disable logging.  
-log_dir - <dir> - The name of the directory for storing the log files.  
-log_name - <log_name.log> - The name of the log file.  
-log_rotate - <daily/weekly/monthly> - How often to rotate the log files, daily is recommended.  
-log_backlogs - <#> - The number of backlogs to keep. If you have a daily log rotation and a backlogs value of 5, you will have five days of logs.  
+[logging]  
+log_enable - 0/1 - Enable or disable logging.  
+log_dir - dir - The name of the directory for storing the log files.  
+log_name - log_name.log - The name of the log file.  
+log_rotate - daily/weekly/monthly - How often to rotate the log files, daily is recommended.  
+log_backlogs - # - The number of backlogs to keep. If you have a daily log rotation and a backlogs value of 5, you will have five days of logs.  
 
 =========================================
 Field mapping
@@ -126,163 +127,163 @@ Config Sections - Detailed
 ---------------------------
 Now that you are probably at the height of your confusion lets begin to make sense of it all and look at how these pieces work together to actually solve the problem.
 
-	Label  
-	***********  
-	Labels are the simplest building block and are great for data that is used repeatedly and if the value changes in the future you only need to redefine it in the label instead of all through out the script. They are defined with a simple key/value pair where the key is the text string you use to access it later and the value is what you want to insert when it is called.
-	
-	*NOTE* You may also notice in the below example that when we are escaping with a backslash in a regex string we are double escaping. This is because when the json file is imported it also uses backslash as an escape character.
-	
-	The label section would look something like:  
-	"labels": {  
-		"prod_nagios_nrdpurl": "http://nagios-prod/nrdp",  
-		"prod_nagios_nrdptoken: "123135467524",  
-		"test_nagios_nrdpurl": "http://nagios-test/nrdp",  
-		"test_nagios_nrdptoken": "12464711256",  
-		"prod_servers_pattern": "^prod\\-.*$",  
-		"test_servers_pattern": "^test\\-.*$",  
-		"undefined": "^$"
-	}  
-	
-	Cat  
-	***********  
-	Concatenations are very similar to a label except instead of simple key/value pairs they are used for concatenating a series of different strings together which is useful for creating custom output messages from multiple different SCOM fields. To create a cat element, instead of defining a key and a value you define a key and an array of values.
-	
-	A sample cat section might look like:  
-	"cat": {  
-		"output": ["scombag.scom.alert.Name"," --- ","scombag.scom.alert.Description"],  
-		"errormessage": ["A problem occured trying to get SCOM output for UID: ","scombag.scom.alert.Id"],  
-	}  
-	
-	Map  
-	***********  
-	As previously stated the Map section allows us to map directly from SCOM to Nagios, this makes it ideal for "deterministic" fields. Such fields are likely to be the alert state, hostname, output and if it is an activecheck or not. The reason for this is these fields are easy to translate, it's likely that the source and destination for the information related to those fields is unlikely to alter what you want to do with the alert from a mapping perspective.
-	
-	A map definition is usually a simple key/value pair where the key is a scombag.nagios.put command. An example map definition can be seen below:  
-	"map": {  
-		"scombag.nagios.put.activecheck": "scombag.scom.alert.IsMonitorAlert",  
-		"scombag.nagios.put.output": "scombag.config.cat.output",  
-		"scombag.nagios.put.hostname":   ["scombag.scom.alert.NetbiosComputerName","scombag.scom.alert.MonitoringObjectDisplayName","scombag.scom.alert.MonitoringObjectPath","scombag.scom.alert.Parameters"],  
-		"scombag.nagios.put.state": "scombag.scom.alert.Severity"  
-	}  
-	
-	Default  
-	***********  
-	The default section serves a very vital function, in the event that something can't be mapped properly the default section will be referred to in order to determine what it should do. Some fields being missing will be easy to recover from e.g. activecheck is not a particularly vital field and an assumption can be made. However for fields like service, if you can't determine that then other parts of your information may also be unreliable.
-	
-	Defining elements in default is a little more complex than the previously discussed sections. The top level key in this case is one of the valid nagios values with a number of sub key/value pairs.
-	
-	Your default section may look like:  
-	"default": {  
-		"nrdpurl": {  
-			"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
-			"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken",  
-			"scombag.nagios.put.hostname": "default-host",  
-			"scombag.nagios.put.service": "SCOM NO VALID MAP ASSIGNED"  
-		},  
-		"nrdptoken": {  
-			"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
-			"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken",  
-			"scombag.nagios.put.hostname": "default-host",  
-			"scombag.nagios.put.service": "SCOM NO VALID MAP ASSIGNED"  
-		},  
-		"hostname": {  
-			"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
-			"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken",  
-			"scombag.nagios.put.hostname": "default-host",  
-			"scombag.nagios.put.service": "SCOM NO VALID MAP ASSIGNED"  
-		},  
-		"service": {  
-			"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
-			"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken",  
-			"scombag.nagios.put.hostname": "default-host",  
-			"scombag.nagios.put.service": "SCOM NO VALID MAP ASSIGNED"  
-		},  
-		"state": {  
-			"scombag.nagios.put.state": "Warning"  
-		},  
-		"output": {  
-			"scombag.nagios.put.output": "scombag.config.cat.errormessage"  
-		},  
-		"activecheck": {  
-			"scombag.nagios.put.activecheck": "0"  
-		}	  
-	}  
-	
-	LogicMap  
-	***********  
-	This last section is by far the most complex but is the most powerful part of this whole integration piece. The logic map allows you to nest "or, not, and" logical statements to make decisions about pattern matching in order to determine a resulting value for a Nagios field. This means you can send your Exchange SCOM alerts to an Exchange service in Nagios, or maybe the Database alerts to a Database service. You can differentiate between Prod and Test servers if you happen to be running both out of the same SCOM instance. You can do a lot of powerful stuff.
+Label  
+***********  
+Labels are the simplest building block and are great for data that is used repeatedly and if the value changes in the future you only need to redefine it in the label instead of all through out the script. They are defined with a simple key/value pair where the key is the text string you use to access it later and the value is what you want to insert when it is called.
 
-	Achieving this though does require some setup time. The top level object under logicmap is a name for that particular pattern... this has no importance other than making it easy for you to remember what the pattern is for. It does however have to be unique and ideally should not contain spaces.
-	
-	Under each of these top level objects you will have two more objects, the root for your logical "and, or, not" evaluation section and the actions to perform if the logical section is evaluated to true (this is called the "return" element as it commonly defines what information is returned to Nagios). 
-	
-	The logical definitions are always defined as an array of objects this allows you to do multiple of the same logical object per layer, however the logical root can only ever have one definition. 
-	
-	A lot of this is very difficult to understand from a text definition, the following example should do more to further your understanding:  
-	"logicmap": {  
-		"nagios-prod": {  
-			"and": [ {  
-				"scombag.nagios.get.hostname": "scombag.config.labels.prod_servers_pattern"  
-			} ],  
-			"return": {  
-				"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
-				"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken"  
-			}  
-		},  
+*NOTE* You may also notice in the below example that when we are escaping with a backslash in a regex string we are double escaping. This is because when the json file is imported it also uses backslash as an escape character.
 
-		"nagios-test": {  
-			"or": [ {  
-				"scombag.nagios.get.hostname": "scombag.config.labels.test_servers_pattern"  
-			} ],  
-			"return": {  
-				"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
-				"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken" 
-			}  
-		},  
-		  
-		"generic-server": {  
-			"and": [ {  
-				"not": [ {  
-					"scombag.scom.class.Name": "Microsoft\\.Windows\\.Server\\..*\\.AD.*"  
-				} ],  
-				"or": [ {  
-					"scombag.scom.class.Name": [  
-						"Microsoft\\.SystemCenter\\.HealthService.*",  
-						"Microsoft\\.Windows\\.Server.*",  
-						"Microsoft\\.Windows\\.Cluster.*",  
-						"Microsoft\\.Windows\\..*\\.DHCP.*",  
-						"Windows\\.Backup\\.Class\\.Windows\\.Backup\\.Status"  
-					],  
-					"and": [ {  
-						"scombag.scom.class.Name": "Microsoft\\.Windows.*",  
-						"scombag.scom.alert.MonitoringObjectDisplayName": ".*Windows Server.*"  
-					} ]  
-				} ]  
-			} ],  
-			"return": {  
-				"scombag.nagios.put.service": "Generic Server SCOM Alerts"  
-			}  
-		},  
-		
-		"exchange-server": {  
-			"or": [ {  
-				"scombag.scom.class.Name": "Microsoft\\.Exchange.*"  
-			} ],  
-			"return": {  
-				"scombag.nagios.put.service": "Exchange SCOM Alerts"  
-			}  
-		},  
-		
-		"AD-server": {  
-			"or": [ {  
-				"scombag.scom.class.Name": "Microsoft\\.Windows\\.Server\\..*\\.AD.*",  
-				"scombag.scom.class.Name": "Microsoft.Windows.DNSServer.Library.Server"  
-			} ],  
-			"return": {  
-				"scombag.nagios.put.service": "AD SCOM Alerts"  
-			}  
-		},  
+The label section would look something like:  
+"labels": {  
+	"prod_nagios_nrdpurl": "http://nagios-prod/nrdp",  
+	"prod_nagios_nrdptoken: "123135467524",  
+	"test_nagios_nrdpurl": "http://nagios-test/nrdp",  
+	"test_nagios_nrdptoken": "12464711256",  
+	"prod_servers_pattern": "^prod\\-.*$",  
+	"test_servers_pattern": "^test\\-.*$",  
+	"undefined": "^$"
+}  
+
+Cat  
+***********  
+Concatenations are very similar to a label except instead of simple key/value pairs they are used for concatenating a series of different strings together which is useful for creating custom output messages from multiple different SCOM fields. To create a cat element, instead of defining a key and a value you define a key and an array of values.
+
+A sample cat section might look like:  
+"cat": {  
+	"output": ["scombag.scom.alert.Name"," --- ","scombag.scom.alert.Description"],  
+	"errormessage": ["A problem occured trying to get SCOM output for UID: ","scombag.scom.alert.Id"],  
+}  
+
+Map  
+***********  
+As previously stated the Map section allows us to map directly from SCOM to Nagios, this makes it ideal for "deterministic" fields. Such fields are likely to be the alert state, hostname, output and if it is an activecheck or not. The reason for this is these fields are easy to translate, it's likely that the source and destination for the information related to those fields is unlikely to alter what you want to do with the alert from a mapping perspective.
+
+A map definition is usually a simple key/value pair where the key is a scombag.nagios.put command. An example map definition can be seen below:  
+"map": {  
+	"scombag.nagios.put.activecheck": "scombag.scom.alert.IsMonitorAlert",  
+	"scombag.nagios.put.output": "scombag.config.cat.output",  
+	"scombag.nagios.put.hostname":   ["scombag.scom.alert.NetbiosComputerName","scombag.scom.alert.MonitoringObjectDisplayName","scombag.scom.alert.MonitoringObjectPath","scombag.scom.alert.Parameters"],  
+	"scombag.nagios.put.state": "scombag.scom.alert.Severity"  
+}  
+
+Default  
+***********  
+The default section serves a very vital function, in the event that something can't be mapped properly the default section will be referred to in order to determine what it should do. Some fields being missing will be easy to recover from e.g. activecheck is not a particularly vital field and an assumption can be made. However for fields like service, if you can't determine that then other parts of your information may also be unreliable.
+
+Defining elements in default is a little more complex than the previously discussed sections. The top level key in this case is one of the valid nagios values with a number of sub key/value pairs.
+
+Your default section may look like:  
+"default": {  
+	"nrdpurl": {  
+		"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
+		"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken",  
+		"scombag.nagios.put.hostname": "default-host",  
+		"scombag.nagios.put.service": "SCOM NO VALID MAP ASSIGNED"  
+	},  
+	"nrdptoken": {  
+		"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
+		"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken",  
+		"scombag.nagios.put.hostname": "default-host",  
+		"scombag.nagios.put.service": "SCOM NO VALID MAP ASSIGNED"  
+	},  
+	"hostname": {  
+		"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
+		"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken",  
+		"scombag.nagios.put.hostname": "default-host",  
+		"scombag.nagios.put.service": "SCOM NO VALID MAP ASSIGNED"  
+	},  
+	"service": {  
+		"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
+		"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken",  
+		"scombag.nagios.put.hostname": "default-host",  
+		"scombag.nagios.put.service": "SCOM NO VALID MAP ASSIGNED"  
+	},  
+	"state": {  
+		"scombag.nagios.put.state": "Warning"  
+	},  
+	"output": {  
+		"scombag.nagios.put.output": "scombag.config.cat.errormessage"  
+	},  
+	"activecheck": {  
+		"scombag.nagios.put.activecheck": "0"  
+	}	  
+}  
+
+LogicMap  
+***********  
+This last section is by far the most complex but is the most powerful part of this whole integration piece. The logic map allows you to nest "or, not, and" logical statements to make decisions about pattern matching in order to determine a resulting value for a Nagios field. This means you can send your Exchange SCOM alerts to an Exchange service in Nagios, or maybe the Database alerts to a Database service. You can differentiate between Prod and Test servers if you happen to be running both out of the same SCOM instance. You can do a lot of powerful stuff.
+
+Achieving this though does require some setup time. The top level object under logicmap is a name for that particular pattern... this has no importance other than making it easy for you to remember what the pattern is for. It does however have to be unique and ideally should not contain spaces.
+
+Under each of these top level objects you will have two more objects, the root for your logical "and, or, not" evaluation section and the actions to perform if the logical section is evaluated to true (this is called the "return" element as it commonly defines what information is returned to Nagios). 
+
+The logical definitions are always defined as an array of objects this allows you to do multiple of the same logical object per layer, however the logical root can only ever have one definition. 
+
+A lot of this is very difficult to understand from a text definition, the following example should do more to further your understanding:  
+"logicmap": {  
+"nagios-prod": {  
+	"and": [ {  
+		"scombag.nagios.get.hostname": "scombag.config.labels.prod_servers_pattern"  
+	} ],  
+	"return": {  
+		"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
+		"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken"  
 	}  
+},  
+
+"nagios-test": {  
+	"or": [ {  
+		"scombag.nagios.get.hostname": "scombag.config.labels.test_servers_pattern"  
+	} ],  
+	"return": {  
+		"scombag.nagios.put.nrdpurl": "scombag.config.label.prod_nagios_nrdpurl",  
+		"scombag.nagios.put.nrdptoken": "scombag.config.label.prod_nagios_nrdptoken" 
+	}  
+},  
+  
+"generic-server": {  
+	"and": [ {  
+		"not": [ {  
+			"scombag.scom.class.Name": "Microsoft\\.Windows\\.Server\\..*\\.AD.*"  
+		} ],  
+		"or": [ {  
+			"scombag.scom.class.Name": [  
+				"Microsoft\\.SystemCenter\\.HealthService.*",  
+				"Microsoft\\.Windows\\.Server.*",  
+				"Microsoft\\.Windows\\.Cluster.*",  
+				"Microsoft\\.Windows\\..*\\.DHCP.*",  
+				"Windows\\.Backup\\.Class\\.Windows\\.Backup\\.Status"  
+			],  
+			"and": [ {  
+				"scombag.scom.class.Name": "Microsoft\\.Windows.*",  
+				"scombag.scom.alert.MonitoringObjectDisplayName": ".*Windows Server.*"  
+			} ]  
+		} ]  
+	} ],  
+	"return": {  
+		"scombag.nagios.put.service": "Generic Server SCOM Alerts"  
+	}  
+},  
+
+"exchange-server": {  
+	"or": [ {  
+		"scombag.scom.class.Name": "Microsoft\\.Exchange.*"  
+	} ],  
+	"return": {  
+		"scombag.nagios.put.service": "Exchange SCOM Alerts"  
+	}  
+},  
+
+"AD-server": {  
+	"or": [ {  
+		"scombag.scom.class.Name": "Microsoft\\.Windows\\.Server\\..*\\.AD.*",  
+		"scombag.scom.class.Name": "Microsoft.Windows.DNSServer.Library.Server"  
+	} ],  
+	"return": {  
+		"scombag.nagios.put.service": "AD SCOM Alerts"  
+	}  
+},  
+}  
 
 =========================================
 Usage
