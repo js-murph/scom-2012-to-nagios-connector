@@ -1,0 +1,41 @@
+{
+	"map": {
+
+	},
+
+	"logicmap": {
+
+	},
+
+	"default": {
+		"nrdpurl": {
+
+		},
+		"nrdptoken": {
+
+		},
+		"hostname": {
+
+		},
+		"service": {
+
+		},
+		"state": {
+
+		},
+		"output": {
+
+		},
+		"activecheck": {
+
+		}	
+	},
+
+	"labels": {
+
+	},
+
+	"cat": {
+
+	}
+}

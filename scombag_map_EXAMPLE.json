@@ -1,0 +1,193 @@
+{ 
+	"map": {
+		"scombag.nagios.put.activecheck": "scombag.scom.alert.IsMonitorAlert",
+		"scombag.nagios.put.output": "scombag.config.cat.output",
+		"scombag.nagios.put.hostname": ["scombag.scom.alert.NetbiosComputerName","scombag.scom.alert.MonitoringObjectDisplayName","scombag.scom.alert.MonitoringObjectPath","scombag.scom.alert.Parameters"],
+		"scombag.nagios.put.state": "scombag.scom.alert.Severity"
+	},
+
+	"logicmap": {
+		"nagios-prod": {
+			"or": [ {
+				"scombag.nagios.get.hostname": "scombag.config.labels.prod_servers"
+			} ],
+			"return": {
+				"scombag.nagios.put.nrdpurl": "http://nagios-prod/nrdp/",
+				"scombag.nagios.put.nrdptoken": "1234567890"
+			}
+		},
+
+		"nagios-test": {
+			"or": [ {
+				"scombag.nagios.get.hostname": "scombag.config.labels.test_servers"
+			} ],
+			"return": {
+				"scombag.nagios.put.nrdpurl": "http://nagios-test/nrdp/",
+				"scombag.nagios.put.nrdptoken": "0987654321"
+			}
+		},
+		
+		"servers-general": {
+			"and": [ {
+				"not": [ {
+					"scombag.scom.class.Name": "Microsoft\\.Windows\\.Server\\..*\\.AD.*"
+				} ],
+				"or": [ {
+					"scombag.scom.class.Name": [
+						"Microsoft\\.SystemCenter\\.HealthService.*",
+						"Microsoft\\.Windows\\.Server.*",
+						"Microsoft\\.Windows\\.Cluster.*",
+						"Microsoft\\.Windows\\..*\\.DHCP.*",
+						"Windows\\.Backup\\.Class\\.Windows\\.Backup\\.Status"
+					],
+					"and": [ {
+						"scombag.scom.class.Name": "Microsoft\\.Windows.*",
+						"scombag.scom.alert.MonitoringObjectDisplayName": ".*Windows Server.*"
+					} ]
+				} ]
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "server SCOM alert"
+			}
+		},
+
+		"servers-backup": {
+			"or": [ {
+				"scombag.scom.alert.Name": "Windows Server Backup Failed Monitor"
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "server backup"
+			}
+		},
+
+		"servers-exchange": {
+			"or": [ {
+				"scombag.scom.class.Name": "Microsoft\\.Exchange.*"
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "Exchange SCOM Alerts"
+			}
+		},
+
+		"servers-opsmgr": {
+			"or": [ {
+				"scombag.scom.class.Name": "Microsoft\\.SystemCenter\\.AllManagementServersPool",
+				"scombag.scom.alert.Name": "^Failed Agent Push.*"
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "OpsMgr SCOM Alerts"
+			}
+		},
+
+		"servers-VMM": {
+			"or": [ {
+				"scombag.scom.class.Name": "Microsoft\\.SystemCenter\\.VirtualMachineManager"
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "VMM SCOM Alerts"
+			}
+		},
+
+		"servers-orchestrator": {
+			"or": [ {
+				"scombag.scom.class.Name": "Microsoft\\.SystemCenter\\..*\\.Orchestrator.*"
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "Orchestrator SCOM Alerts"
+			}
+		},
+
+		"servers-AD": {
+			"or": [ {
+				"scombag.scom.class.Name": "Microsoft\\.Windows\\.Server\\..*\\.AD.*",
+				"scombag.scom.class.Name": "Microsoft.Windows.DNSServer.Library.Server"
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "AciveDirectory SCOM Alerts"
+			}
+		},
+
+		"database-MSSQL": {
+			"and": [ {
+				"scombag.scom.class.Name": "Microsoft\\.SQLServer.*"
+			"return": {
+				"scombag.nagios.put.service": "MSSQL SCOM Alerts"
+			}
+		},
+
+		"server-iis-site": {
+			"or": [ {
+				"scombag.scom.class.Name": "Microsoft\\.Windows\\.InternetInformationServices\\..*\\.WebSite"
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "IIS SCOM Alerts"
+			}
+		},
+
+		"appteam-APM-Monitors": {
+			"and": [ {
+				"scombag.scom.class.Name": "Microsoft\\.SystemCenter\\.Apm.*"
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "MyApplication SCOM Alerts"
+			}
+		},
+
+		"alert-is-passive": {
+			"or": [ {
+				"scombag.scom.alert.IsMonitorAlert": "False"
+			} ],
+			"return": {
+				"scombag.nagios.put.service": "scombag.config.cat.passiveservice"
+			}
+		}
+	},
+
+	"default": {
+		"nrdpurl": {
+			"scombag.nagios.put.nrdpurl": "http://nagios-prod/nrdp/",
+			"scombag.nagios.put.nrdptoken": "1234567890",
+			"scombag.nagios.put.hostname": "MySCOMServer",
+			"scombag.nagios.put.service": "SCOM NO MAP ASSIGNED"
+		},
+		"nrdptoken": {
+			"scombag.nagios.put.nrdpurl": "http://nagios-prod/nrdp/",
+			"scombag.nagios.put.nrdptoken": "1234567890",
+			"scombag.nagios.put.hostname": "MySCOMServer",
+			"scombag.nagios.put.service": "SCOM NO MAP ASSIGNED"
+		},
+		"hostname": {
+			"scombag.nagios.put.nrdpurl": "http://nagios-prod/nrdp/",
+			"scombag.nagios.put.nrdptoken": "1234567890",
+			"scombag.nagios.put.hostname": "MySCOMServer",
+			"scombag.nagios.put.service": "SCOM NO MAP ASSIGNED"
+		},
+		"service": {
+			"scombag.nagios.put.nrdpurl": "http://nagios-prod/nrdp/",
+			"scombag.nagios.put.nrdptoken": "1234567890",
+			"scombag.nagios.put.hostname": "MySCOMServer",
+			"scombag.nagios.put.service": "SCOM NO MAP ASSIGNED"
+		},
+		"state": {
+			"scombag.nagios.put.state": "Warning"
+		},
+		"output": {
+			"scombag.nagios.put.output": "scombag.config.cat.errormessage"
+		},
+		"activecheck": {
+			"scombag.nagios.put.activecheck": "0"
+		}	
+	},
+
+	"labels": {
+		"prod_servers": "^prod-.*$",
+		"test_servers": "^test-.*$",
+		"undefined": "^$"
+	},
+
+	"cat": {
+		"output": ["scombag.scom.alert.Name"," --- ","scombag.scom.alert.Description"],
+		"errormessage": ["A problem occured trying to get SCOM output for UID: ","scombag.scom.alert.Id"],
+		"passiveservice": ["scombag.nagios.get.service", " Passive"]
+	}
+}
